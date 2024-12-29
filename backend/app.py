@@ -17,7 +17,13 @@ import os
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000'], allow_headers=['Content-Type', 'Authorization'])
+# CORS(app, supports_credentials=True, origins=['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000'], allow_headers=['Content-Type', 'Authorization'])
+
+CORS(app, 
+     supports_credentials=True,
+     origins=['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000'],
+     allow_headers=['Content-Type', 'Authorization'],
+     expose_headers=['Authorization'])
 
 groq_client = Groq(api_key=os.environ.get('GROQ_API_KEY'))
 
@@ -117,7 +123,6 @@ def create_chat():
     db.session.add(new_chat)
     db.session.commit()
     
-    # Add initial welcome message
     welcome_message = Message(
         chat_id=new_chat.id,
         content="Hi! I'm your medical assistant. What can I help you with today?",
@@ -131,86 +136,63 @@ def create_chat():
         'welcome_message': {
             'id': welcome_message.id,
             'content': welcome_message.content,
-            'is_bot': True,
+            'is_bot': welcome_message.is_bot,
             'created_at': welcome_message.created_at.isoformat()
         }
     }), 201
 
-# @app.route('/api/chat/<int:chat_id>/message', methods=['POST'])
-# @jwt_required()
-# def send_message(chat_id):
-#     user_id = get_jwt_identity()
-#     data = request.get_json()
-    
-#     chat = Chat.query.filter_by(id=chat_id, user_id=user_id).first()
-#     if not chat:
-#         return jsonify({'error': 'Chat not found'}), 404
-    
-#     # Store user message
-#     user_message = Message(
-#         chat_id=chat_id,
-#         content=data['message'],
-#         is_bot=False
-#     )
-#     db.session.add(user_message)
-    
-#     # Generate bot response (placeholder - implement your AI logic here)
-#     bot_response = "This is a placeholder response. Implement AI processing here."
-#     bot_message = Message(
-#         chat_id=chat_id,
-#         content=bot_response,
-#         is_bot=True
-#     )
-#     db.session.add(bot_message)
-    
-#     db.session.commit()
-    
-#     return jsonify({
-#         'user_message': user_message.content,
-#         'bot_response': bot_message.content
-#     }), 200
-
 @app.route('/api/chat/<int:chat_id>/message', methods=['POST'])
 @jwt_required()
 def send_message(chat_id):
-    user_id = get_jwt_identity()
-    data = request.get_json()
-    
-    chat = Chat.query.filter_by(id=chat_id, user_id=user_id).first()
-    if not chat:
-        return jsonify({'error': 'Chat not found'}), 404
-    
-    # Store user message
-    user_message = Message(
-        chat_id=chat_id,
-        content=data['message'],
-        is_bot=False
-    )
-    db.session.add(user_message)
-    db.session.flush()  # Flush to get the message ID
-    
-    # Get response from Llama
-    bot_response = get_llama_response(data['message'])
-    
-    # Store bot response
-    bot_message = Message(
-        chat_id=chat_id,
-        content=bot_response,
-        is_bot=True
-    )
-    db.session.add(bot_message)
-    
     try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        chat = Chat.query.filter_by(id=chat_id, user_id=user_id).first()
+        if not chat:
+            return jsonify({'error': 'Chat not found'}), 404
+        
+        # Store user message
+        user_message = Message(
+            chat_id=chat_id,
+            content=data['message'],
+            is_bot=False
+        )
+        db.session.add(user_message)
+        db.session.flush()
+        
+        # Get bot response
+        bot_response = get_llama_response(data['message'])
+        
+        # Store bot response
+        bot_message = Message(
+            chat_id=chat_id,
+            content=bot_response,
+            is_bot=True
+        )
+        db.session.add(bot_message)
         db.session.commit()
-    except SQLAlchemyError as e:
+        
+        return jsonify({
+            'user_message': {
+                'id': user_message.id,
+                'content': user_message.content,
+                'is_bot': False,
+                'created_at': user_message.created_at.isoformat()
+            },
+            'bot_response': {
+                'id': bot_message.id,
+                'content': bot_message.content,
+                'is_bot': True,
+                'created_at': bot_message.created_at.isoformat()
+            }
+        }), 200
+        
+    except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Database error occurred'}), 500
+        print(f"Error in send_message: {str(e)}")
+        return jsonify({'error': 'Failed to process message'}), 500
     
-    return jsonify({
-        'user_message': user_message.content,
-        'bot_response': bot_message.content
-    }), 200
-
 @app.route('/api/chat/history', methods=['GET'])
 @jwt_required()
 def get_chat_history():

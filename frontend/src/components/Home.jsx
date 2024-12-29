@@ -356,6 +356,7 @@ const Home = () => {
     }
   };
 
+    
   const handleSend = async (e) => {
     e.preventDefault();
     if (!message.trim() || loading) return;
@@ -371,6 +372,7 @@ const Home = () => {
         setCurrentChat(chatId);
       }
 
+      // Add user message to UI immediately
       const userMessage = {
         id: Date.now(),
         content: message,
@@ -382,21 +384,23 @@ const Home = () => {
       const currentMessage = message;
       setMessage("");
 
+      // Send message and get response
       const response = await ApiService.sendMessage(chatId, currentMessage);
       
+      // Add bot response to chat
       setChatHistory(prev => [...prev, {
-        id: Date.now() + 1,
-        content: response.bot_response,
+        id: response.bot_response.id,
+        content: response.bot_response.content,
         is_bot: true,
-        created_at: new Date().toISOString()
+        created_at: response.bot_response.created_at
       }]);
     } catch (err) {
       console.error('Failed to send message:', err);
+      // Add error handling UI feedback here
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div className={`flex min-h-screen ${darkMode ? "bg-gray-900" : "bg-gray-100"}`}>
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />

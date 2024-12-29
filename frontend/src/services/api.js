@@ -1,4 +1,127 @@
+// import axios from 'axios';
+
+// const api = axios.create({
+//   baseURL: 'http://localhost:5000/api',
+//   headers: {
+//     'Content-Type': 'application/json'
+//   },
+//   withCredentials: true
+// });
+
+// // Request interceptor to add token to headers
+// api.interceptors.request.use((config) => {
+//   const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+//   if (token) {
+//     config.headers.Authorization = `Bearer ${token}`;
+//   }
+//   return config;
+// }, (error) => {
+//   return Promise.reject(error);
+// });
+
+// // Response interceptor for error handling
+// api.interceptors.response.use(
+//   (response) => response,
+//   (error) => {
+//     if (error.response?.status === 401) {
+//       localStorage.removeItem('token');
+//       sessionStorage.removeItem('token');
+//       window.location.href = '/login';
+//     }
+//     return Promise.reject(error.response?.data || error);
+//   }
+// );
+
+// const ApiService = {
+//   // Auth endpoints
+//   async signup(userData, rememberMe = false) {
+//     try {
+//       const response = await api.post('/auth/signup', userData);
+//       const { token, user } = response.data;
+//       if (rememberMe) {
+//         localStorage.setItem('token', token);
+//       } else {
+//         sessionStorage.setItem('token', token);
+//       }
+//       return { user, token };
+//     } catch (error) {
+//       throw error?.error || 'An error occurred during signup';
+//     }
+//   },
+
+//   async login(email, password, rememberMe = false) {
+//     try {
+//       const response = await api.post('/login', { email, password });
+//       const { token, user } = response.data;
+//       if (rememberMe) {
+//         localStorage.setItem('token', token);
+//       } else {
+//         sessionStorage.setItem('token', token);
+//       }
+//       return { user, token };
+//     } catch (error) {
+//       throw error?.error || 'Invalid email or password';
+//     }
+//   },
+
+//   async socialLogin(provider, token, rememberMe = false) {
+//     try {
+//       const response = await api.post('/auth/social', { provider, token });
+//       const { token: authToken, user } = response.data;
+//       if (rememberMe) {
+//         localStorage.setItem('token', authToken);
+//       } else {
+//         sessionStorage.setItem('token', authToken);
+//       }
+//       return { user, token: authToken };
+//     } catch (error) {
+//       throw error?.error || 'Social login failed';
+//     }
+//   },
+
+//   async logout() {
+//     try {
+//       localStorage.removeItem('token');
+//       sessionStorage.removeItem('token');
+//       return true;
+//     } catch (error) {
+//       console.error('Logout error:', error);
+//       throw error;
+//     }
+//   },
+
+//   async getChatHistory() {
+//     try {
+//       const response = await api.get('/chat/history');
+//       return response.data;
+//     } catch (error) {
+//       throw error?.error || 'Failed to fetch chat history';
+//     }
+//   }
+// };
+
+// export default ApiService;
+
 import axios from 'axios';
+
+// const api = axios.create({
+//   baseURL: 'http://localhost:5000/api',
+//   headers: {
+//     'Content-Type': 'application/json'
+//   },
+//   withCredentials: true
+// });
+
+// // Request interceptor to add token to headers
+// api.interceptors.request.use((config) => {
+//   const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+//   if (token) {
+//     config.headers.Authorization = `Bearer ${token}`;
+//   }
+//   return config;
+// }, (error) => {
+//   return Promise.reject(error);
+// });
 
 const api = axios.create({
   baseURL: 'http://localhost:5000/api',
@@ -8,15 +131,12 @@ const api = axios.create({
   withCredentials: true
 });
 
-// Request interceptor to add token to headers
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token') || sessionStorage.getItem('token');
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization = `Bearer ${token}`; // Make sure it's "Bearer " with a space
   }
   return config;
-}, (error) => {
-  return Promise.reject(error);
 });
 
 // Response interceptor for error handling
@@ -64,29 +184,21 @@ const ApiService = {
     }
   },
 
-  async socialLogin(provider, token, rememberMe = false) {
+  async createNewChat() {
     try {
-      const response = await api.post('/auth/social', { provider, token });
-      const { token: authToken, user } = response.data;
-      if (rememberMe) {
-        localStorage.setItem('token', authToken);
-      } else {
-        sessionStorage.setItem('token', authToken);
-      }
-      return { user, token: authToken };
+      const response = await api.post('/chat/new');
+      return response.data;
     } catch (error) {
-      throw error?.error || 'Social login failed';
+      throw error?.error || 'Failed to create new chat';
     }
   },
 
-  async logout() {
+  async sendMessage(chatId, message) {
     try {
-      localStorage.removeItem('token');
-      sessionStorage.removeItem('token');
-      return true;
+      const response = await api.post(`/chat/${chatId}/message`, { message });
+      return response.data;
     } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
+      throw error?.error || 'Failed to send message';
     }
   },
 
@@ -97,6 +209,12 @@ const ApiService = {
     } catch (error) {
       throw error?.error || 'Failed to fetch chat history';
     }
+  },
+
+  async logout() {
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+    return true;
   }
 };
 
